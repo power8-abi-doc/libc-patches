@@ -1,0 +1,78 @@
+From c75ad15b5b7599f73d3e0324f99bc916a7914e85 Mon Sep 17 00:00:00 2001
+From: Bert Tenjy <bert.tenjy@gmail.com>
+Date: Thu, 13 Feb 2020 13:12:47 -0600
+Subject: [PATCH v0] PPC64: Add aliases for SIMD log/logf, exp/expf, pow/powf
+ functions.
+
+Required by how GCC derives vector function names from corresponding
+scalar function names. Details on how this naming came to be begin at:
+<https://gcc.gnu.org/ml/gcc/2015-06/msg00173.html>
+---
+ .../powerpc/powerpc64/fpu/vec_finite_alias.c  | 50 ++++++++++++++++++-
+ 1 file changed, 49 insertions(+), 1 deletion(-)
+
+diff --git a/sysdeps/powerpc/powerpc64/fpu/vec_finite_alias.c b/sysdeps/powerpc/powerpc64/fpu/vec_finite_alias.c
+index 5fd180fbeb..bbf5657b3b 100644
+--- a/sysdeps/powerpc/powerpc64/fpu/vec_finite_alias.c
++++ b/sysdeps/powerpc/powerpc64/fpu/vec_finite_alias.c
+@@ -1,4 +1,7 @@
+-/* A temporary workaround to force creation of libmvec_nonshared.a.
++/* These aliases added as workaround to exclude unnecessary symbol
++   aliases in libmvec.so while compiler creates the vector names
++   based on scalar asm name.  Corresponding discussion is at
++   <https://gcc.gnu.org/ml/gcc/2015-06/msg00173.html>.
+    Copyright (C) 2019 Free Software Foundation, Inc.
+    This file is part of the GNU C Library.
+ 
+@@ -15,3 +18,48 @@
+    You should have received a copy of the GNU Lesser General Public
+    License along with the GNU C Library; if not, see
+    <http://www.gnu.org/licenses/>.  */
++
++#include <altivec.h>
++
++extern vector double _ZGVbN2v_log (vector double);
++extern vector float _ZGVbN4v_logf (vector float);
++extern vector double _ZGVbN2v_exp (vector double);
++extern vector float _ZGVbN4v_expf (vector float);
++extern vector double _ZGVbN2vv_pow (vector double, vector double);
++extern vector float _ZGVbN4vv_powf (vector float, vector float);
++
++vector double
++_ZGVbN2v___log_finite (vector double x)
++{
++  return _ZGVbN2v_log (x);
++}
++
++vector float
++_ZGVbN4v___logf_finite (vector float x)
++{
++  return _ZGVbN4v_logf (x);
++}
++
++vector double
++_ZGVbN2v___exp_finite (vector double x)
++{
++  return _ZGVbN2v_exp (x);
++}
++
++vector float
++_ZGVbN4v___expf_finite (vector float x)
++{
++  return _ZGVbN4v_expf (x);
++}
++
++vector double
++_ZGVbN2vv___pow_finite (vector double x, vector double y)
++{
++  return _ZGVbN2vv_pow (x, y);
++}
++
++vector float
++_ZGVbN4vv___powf_finite (vector float x, vector float y)
++{
++  return _ZGVbN4vv_powf (x, y);
++}
+-- 
+2.20.1
+
