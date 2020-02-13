@@ -1,0 +1,56 @@
+From 62925e278b70ff804e2c1c851047dcff7b0611ce Mon Sep 17 00:00:00 2001
+From: Bert Tenjy <bert.tenjy@gmail.com>
+Date: Thu, 13 Feb 2020 11:55:31 -0600
+Subject: [PATCH v0] PPC64: Attach SIMD attribute to cosf, sin, sinf function
+ declarations.
+
+These changes were mistakenly left out of the patches that added SIMD
+versions of these functions to libmvec.
+---
+ sysdeps/powerpc/bits/math-vector.h | 22 ++++++++++++++--------
+ 1 file changed, 14 insertions(+), 8 deletions(-)
+
+diff --git a/sysdeps/powerpc/bits/math-vector.h b/sysdeps/powerpc/bits/math-vector.h
+index ce10dc4bb7..66651b02f3 100644
+--- a/sysdeps/powerpc/bits/math-vector.h
++++ b/sysdeps/powerpc/bits/math-vector.h
+@@ -36,22 +36,28 @@
+ # ifdef __DECL_SIMD_PPC64
+ #  undef __DECL_SIMD_cos
+ #  define __DECL_SIMD_cos __DECL_SIMD_PPC64
+-#  undef __DECL_SIMD_log
+-#  define __DECL_SIMD_log __DECL_SIMD_PPC64
+-#  undef __DECL_SIMD_logf
+-#  define __DECL_SIMD_logf __DECL_SIMD_PPC64
++#  undef __DECL_SIMD_cosf
++#  define __DECL_SIMD_cosf __DECL_SIMD_PPC64
++#  undef __DECL_SIMD_sin
++#  define __DECL_SIMD_sin __DECL_SIMD_PPC64
++#  undef __DECL_SIMD_sinf
++#  define __DECL_SIMD_sinf __DECL_SIMD_PPC64
+ #  undef __DECL_SIMD_sincos
+ #  define __DECL_SIMD_sincos __DECL_SIMD_PPC64
+ #  undef __DECL_SIMD_sincosf
+ #  define __DECL_SIMD_sincosf __DECL_SIMD_PPC64
+-#  undef __DECL_SIMD_expf
+-#  define __DECL_SIMD_expf __DECL_SIMD_PPC64
++#  undef __DECL_SIMD_log
++#  define __DECL_SIMD_log __DECL_SIMD_PPC64
++#  undef __DECL_SIMD_logf
++#  define __DECL_SIMD_logf __DECL_SIMD_PPC64
+ #  undef __DECL_SIMD_exp
+ #  define __DECL_SIMD_exp __DECL_SIMD_PPC64
+-#  undef __DECL_SIMD_powf
+-#  define __DECL_SIMD_powf __DECL_SIMD_PPC64
++#  undef __DECL_SIMD_expf
++#  define __DECL_SIMD_expf __DECL_SIMD_PPC64
+ #  undef __DECL_SIMD_pow
+ #  define __DECL_SIMD_pow __DECL_SIMD_PPC64
++#  undef __DECL_SIMD_powf
++#  define __DECL_SIMD_powf __DECL_SIMD_PPC64
+ 
+ # endif
+ #endif
+-- 
+2.20.1
+
