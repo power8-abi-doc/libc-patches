@@ -1,0 +1,206 @@
+From 1e8feec5e90ff1a879849714c8d2ea143e77e154 Mon Sep 17 00:00:00 2001
+From: Bert Tenjy <bert.tenjy@gmail.com>
+Date: Fri, 14 Feb 2020 13:31:53 -0600
+Subject: [RFC PATCH v0] PPC64: Implement POWER Architecure Vector Function
+ ABI.
+
+The Vector Function ABI document is tentatively located at:
+<https://github.com/power8-abi-doc/vector-function-abi>
+
+Bill Schmidt of IBM Linux Tech. Center has committed to eventually
+integrating this ABI into the official POWER Architecture specifications.
+He is a GCC and Toolchain Architect so this should ease concerns over
+how much to trust an ABI which is not an official release.
+
+The implementation is very similar to those of x86_64 SSE and Aarch64.
+
+The major test of this patch autovectorizes math functions and so requires
+libmvec. PPC64 libmvec functionality is only available on GLIBC branch
+tuliom/libmvec. Until that branch is merged to master, testing this ABI
+will mean checking out GLIBC branch tuliom/libmvec, building and installing
+to a non-system directory. Likewise, GCC will have to be built then installed
+so that it doesn't interfere with the system's GCC.
+
+Compiling with newly-built GCC against newly-built GLIBC requires these
+options to GCC:
+-L "${glibc_install_dir}/lib"
+-I "${glibc_install_dir}/include"
+-Wl,--rpath="${glibc_install_dir}/lib"
+-Wl,--dynamic-linker="${glibc_install_dir}/lib/ld64.so.2"
+---
+ gcc/config/rs6000/rs6000.c | 152 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 152 insertions(+)
+
+diff --git a/gcc/config/rs6000/rs6000.c b/gcc/config/rs6000/rs6000.c
+index fc36bb6714b..3329c96e6cc 100644
+--- a/gcc/config/rs6000/rs6000.c
++++ b/gcc/config/rs6000/rs6000.c
+@@ -1266,6 +1266,147 @@ static const struct attribute_spec rs6000_attribute_table[] =
+ #endif
+   { NULL,        0, 0, false, false, false, false, NULL, NULL }
+ };
++
++/* Implement TARGET_SIMD_CLONE_COMPUTE_VECSIZE_AND_SIMDLEN.  */
++
++static int
++rs6000_simd_clone_compute_vecsize_and_simdlen (struct cgraph_node *node,
++                                        struct cgraph_simd_clone *clonei,
++                                        tree base_type, int num)
++{
++  int ret = 1;
++
++  if (clonei->simdlen
++      && (clonei->simdlen < 2
++	  || clonei->simdlen > 1024
++	  || (clonei->simdlen & (clonei->simdlen - 1)) != 0))
++    {
++      warning_at (DECL_SOURCE_LOCATION (node->decl), 0,
++		  "unsupported simdlen %d", clonei->simdlen);
++      return 0;
++    }
++
++  tree ret_type = TREE_TYPE (TREE_TYPE (node->decl));
++  if (TREE_CODE (ret_type) != VOID_TYPE)
++    switch (TYPE_MODE (ret_type))
++      {
++      case E_QImode:
++      case E_HImode:
++      case E_SImode:
++      case E_DImode:
++      case E_SFmode:
++      case E_DFmode:
++      /* case E_SCmode: */
++      /* case E_DCmode: */
++	if (!AGGREGATE_TYPE_P (ret_type))
++	  break;
++	/* FALLTHRU */
++      default:
++	warning_at (DECL_SOURCE_LOCATION (node->decl), 0,
++		    "unsupported return type %qT for simd", ret_type);
++	return 0;
++      }
++
++  tree t;
++  int i;
++  tree type_arg_types = TYPE_ARG_TYPES (TREE_TYPE (node->decl));
++  bool decl_arg_p = (node->definition || type_arg_types == NULL_TREE);
++
++  for (t = (decl_arg_p ? DECL_ARGUMENTS (node->decl) : type_arg_types), i = 0;
++       t && t != void_list_node; t = TREE_CHAIN (t), i++)
++    {
++      tree arg_type = decl_arg_p ? TREE_TYPE (t) : TREE_VALUE (t);
++      switch (TYPE_MODE (arg_type))
++	{
++	case E_QImode:
++	case E_HImode:
++	case E_SImode:
++	case E_DImode:
++	case E_SFmode:
++	case E_DFmode:
++	/* case E_SCmode: */
++	/* case E_DCmode: */
++	  if (!AGGREGATE_TYPE_P (arg_type))
++	    break;
++	  /* FALLTHRU */
++	default:
++	  if (clonei->args[i].arg_type == SIMD_CLONE_ARG_TYPE_UNIFORM)
++	    break;
++	  warning_at (DECL_SOURCE_LOCATION (node->decl), 0,
++		      "unsupported argument type %qT for simd", arg_type);
++	  return 0;
++	}
++    }
++
++  if (TARGET_VSX)
++    {
++      clonei->vecsize_mangle = 'b';
++      ret = 1;
++    }
++  clonei->mask_mode = VOIDmode;
++  switch (clonei->vecsize_mangle)
++    {
++    case 'b':
++      clonei->vecsize_int = 128;
++      clonei->vecsize_float = 128;
++      break;
++    default:
++      gcc_unreachable ();
++    }
++  if (clonei->simdlen == 0)
++    {
++      if (SCALAR_INT_MODE_P (TYPE_MODE (base_type)))
++	clonei->simdlen = clonei->vecsize_int;
++      else
++	clonei->simdlen = clonei->vecsize_float;
++      clonei->simdlen /= GET_MODE_BITSIZE (TYPE_MODE (base_type));
++    }
++  else
++    {
++      tree ctype = ret_type;
++      if (TREE_CODE (ret_type) == VOID_TYPE)
++	ctype = base_type;
++      int cnt = GET_MODE_BITSIZE (TYPE_MODE (ctype)) * clonei->simdlen;
++      if (SCALAR_INT_MODE_P (TYPE_MODE (ctype)))
++	cnt /= clonei->vecsize_int;
++      else
++	cnt /= clonei->vecsize_float;
++      if (cnt > 12)
++	{
++	  warning_at (DECL_SOURCE_LOCATION (node->decl), 0,
++		      "unsupported simdlen %d", clonei->simdlen);
++	  return 0;
++	}
++      }
++  return ret;
++}
++
++/* Add target attribute to SIMD clone NODE if needed.  */
++
++void
++rs6000_simd_clone_adjust (struct cgraph_node *node)
++{
++}
++
++/* If SIMD clone NODE can't be used in a vectorized loop
++   in current function, return -1, otherwise return a badness of using it
++   (0 if it is most desirable from vecsize_mangle point of view, 1
++   slightly less desirable, etc.).  */
++
++static int
++rs6000_simd_clone_usable (struct cgraph_node *node)
++{
++  switch (node->simdclone->vecsize_mangle)
++    {
++    case 'b':
++      if (!TARGET_VSX)
++        return -1;
++      return 0;
++    default:
++      gcc_unreachable ();
++    }
++}
++
+ 
+ #ifndef TARGET_PROFILE_KERNEL
+ #define TARGET_PROFILE_KERNEL 0
+@@ -1274,6 +1415,17 @@ static const struct attribute_spec rs6000_attribute_table[] =
+ /* Initialize the GCC target structure.  */
+ #undef TARGET_ATTRIBUTE_TABLE
+ #define TARGET_ATTRIBUTE_TABLE rs6000_attribute_table
++
++#undef TARGET_SIMD_CLONE_COMPUTE_VECSIZE_AND_SIMDLEN
++#define TARGET_SIMD_CLONE_COMPUTE_VECSIZE_AND_SIMDLEN \
++  rs6000_simd_clone_compute_vecsize_and_simdlen
++
++#undef TARGET_SIMD_CLONE_ADJUST
++#define TARGET_SIMD_CLONE_ADJUST rs6000_simd_clone_adjust
++
++#undef TARGET_SIMD_CLONE_USABLE
++#define TARGET_SIMD_CLONE_USABLE rs6000_simd_clone_usable
++
+ #undef TARGET_SET_DEFAULT_TYPE_ATTRIBUTES
+ #define TARGET_SET_DEFAULT_TYPE_ATTRIBUTES rs6000_set_default_type_attributes
+ #undef TARGET_ATTRIBUTE_TAKES_IDENTIFIER_P
+-- 
+2.20.1
+
