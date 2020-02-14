@@ -1,0 +1,104 @@
+From a6b9405b03d3e553757ae8fd0588dbe037c12240 Mon Sep 17 00:00:00 2001
+From: Bert Tenjy <bert.tenjy@gmail.com>
+Date: Fri, 14 Feb 2020 09:49:27 -0600
+Subject: [PATCH v0] PPC64: Remove vec_finite_alias.c as aliases it creates are
+ no longer required.
+
+File bits/math-finite.h has been removed; consequently aliases for SIMD log/f,
+exp/f, and pow/f can also be eliminated.
+---
+ sysdeps/powerpc/powerpc64/fpu/Makefile        |  8 ---
+ .../powerpc/powerpc64/fpu/vec_finite_alias.c  | 65 -------------------
+ 2 files changed, 73 deletions(-)
+ delete mode 100644 sysdeps/powerpc/powerpc64/fpu/vec_finite_alias.c
+
+diff --git a/sysdeps/powerpc/powerpc64/fpu/Makefile b/sysdeps/powerpc/powerpc64/fpu/Makefile
+index a52a9c129a..05075c2a75 100644
+--- a/sysdeps/powerpc/powerpc64/fpu/Makefile
++++ b/sysdeps/powerpc/powerpc64/fpu/Makefile
+@@ -5,11 +5,3 @@ CFLAGS-s_llrint.c += -fno-builtin-lrintf -fno-builtin-llrintf
+ # Same as before but for lroundf and llroundf
+ CFLAGS-s_llround.c += -fno-builtin-lroundf -fno-builtin-llroundf
+ endif
+-
+-ifeq ($(subdir),mathvec)
+-libmvec-support += vec_finite_alias
+-
+-CFLAGS-vec_finite_alias.c += -mabi=altivec -maltivec -mvsx
+-
+-libmvec-static-only-routines = vec_finite_alias
+-endif
+diff --git a/sysdeps/powerpc/powerpc64/fpu/vec_finite_alias.c b/sysdeps/powerpc/powerpc64/fpu/vec_finite_alias.c
+deleted file mode 100644
+index bbf5657b3b..0000000000
+--- a/sysdeps/powerpc/powerpc64/fpu/vec_finite_alias.c
++++ /dev/null
+@@ -1,65 +0,0 @@
+-/* These aliases added as workaround to exclude unnecessary symbol
+-   aliases in libmvec.so while compiler creates the vector names
+-   based on scalar asm name.  Corresponding discussion is at
+-   <https://gcc.gnu.org/ml/gcc/2015-06/msg00173.html>.
+-   Copyright (C) 2019 Free Software Foundation, Inc.
+-   This file is part of the GNU C Library.
+-
+-   The GNU C Library is free software; you can redistribute it and/or
+-   modify it under the terms of the GNU Lesser General Public
+-   License as published by the Free Software Foundation; either
+-   version 2.1 of the License, or (at your option) any later version.
+-
+-   The GNU C Library is distributed in the hope that it will be useful,
+-   but WITHOUT ANY WARRANTY; without even the implied warranty of
+-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+-   Lesser General Public License for more details.
+-
+-   You should have received a copy of the GNU Lesser General Public
+-   License along with the GNU C Library; if not, see
+-   <http://www.gnu.org/licenses/>.  */
+-
+-#include <altivec.h>
+-
+-extern vector double _ZGVbN2v_log (vector double);
+-extern vector float _ZGVbN4v_logf (vector float);
+-extern vector double _ZGVbN2v_exp (vector double);
+-extern vector float _ZGVbN4v_expf (vector float);
+-extern vector double _ZGVbN2vv_pow (vector double, vector double);
+-extern vector float _ZGVbN4vv_powf (vector float, vector float);
+-
+-vector double
+-_ZGVbN2v___log_finite (vector double x)
+-{
+-  return _ZGVbN2v_log (x);
+-}
+-
+-vector float
+-_ZGVbN4v___logf_finite (vector float x)
+-{
+-  return _ZGVbN4v_logf (x);
+-}
+-
+-vector double
+-_ZGVbN2v___exp_finite (vector double x)
+-{
+-  return _ZGVbN2v_exp (x);
+-}
+-
+-vector float
+-_ZGVbN4v___expf_finite (vector float x)
+-{
+-  return _ZGVbN4v_expf (x);
+-}
+-
+-vector double
+-_ZGVbN2vv___pow_finite (vector double x, vector double y)
+-{
+-  return _ZGVbN2vv_pow (x, y);
+-}
+-
+-vector float
+-_ZGVbN4vv___powf_finite (vector float x, vector float y)
+-{
+-  return _ZGVbN4vv_powf (x, y);
+-}
+-- 
+2.20.1
+
