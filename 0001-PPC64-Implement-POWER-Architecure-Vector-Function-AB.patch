@@ -1,7 +1,7 @@
 From 1e8feec5e90ff1a879849714c8d2ea143e77e154 Mon Sep 17 00:00:00 2001
 From: Bert Tenjy <bert.tenjy@gmail.com>
 Date: Fri, 14 Feb 2020 13:31:53 -0600
-Subject: [RFC PATCH v0] PPC64: Implement POWER Architecure Vector Function
+Subject: [RFC PATCH v1] PPC64: Implement POWER Architecure Vector Function
  ABI.
 
 The Vector Function ABI document is tentatively located at:
@@ -30,6 +30,10 @@ options to GCC:
 ---
  gcc/config/rs6000/rs6000.c | 152 +++++++++++++++++++++++++++++++++++++
  1 file changed, 152 insertions(+)
+
+The only change from v0 is that this new version (v1) is being sent to 
+the mailing list as inline plain text. Segher objected to v0 having 
+been sent as a binary attachment.
 
 diff --git a/gcc/config/rs6000/rs6000.c b/gcc/config/rs6000/rs6000.c
 index fc36bb6714b..3329c96e6cc 100644
